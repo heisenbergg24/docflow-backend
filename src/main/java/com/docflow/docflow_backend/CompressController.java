@@ -34,12 +34,19 @@ public class CompressController {
     private static Boolean ghostscriptAvailable = null;
 
     @PostMapping("/api/compress/image")
-    public ResponseEntity<byte[]> compressImage(
+    public ResponseEntity<?> compressImage(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "quality", defaultValue = "0.5") float quality
     ) throws Exception {
 
         BufferedImage originalImage = ImageIO.read(file.getInputStream());
+
+        if (originalImage == null) {
+            return ResponseEntity.status(415)
+                    .body("Unsupported image format. Please convert your image to JPG or PNG before uploading. " +
+                            "(iPhones often save photos as HEIC — convert first in your Photos app)");
+        }
+
         byte[] compressedBytes = compressToJpeg(originalImage, quality);
 
         String filename = "compressed_" + file.getOriginalFilename();
