@@ -37,24 +37,39 @@ public class CompressController {
     public ResponseEntity<?> compressImage(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "quality", defaultValue = "0.5") float quality
-    ) throws Exception {
+    ) {
+        try {
+            BufferedImage originalImage = ImageIO.read(file.getInputStream());
 
-        BufferedImage originalImage = ImageIO.read(file.getInputStream());
+            if (originalImage == null) {
+                return ResponseEntity.status(415)
+                        .body("Unsupported image format. Please convert your image to JPG or PNG before uploading. " +
+                                "(iPhones often save photos as HEIC — convert first in your Photos app)");
+            }
 
-        if (originalImage == null) {
-            return ResponseEntity.status(415)
-                    .body("Unsupported image format. Please convert your image to JPG or PNG before uploading. " +
-                            "(iPhones often save photos as HEIC — convert first in your Photos app)");
+            byte[] compressedBytes = compressToJpeg(originalImage, quality);
+
+            String filename = "compressed_" + file.getOriginalFilename();
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .contentType(MediaType.IMAGE_JPEG)
+                    .body(compressedBytes);
+
+        } catch (OutOfMemoryError e) {
+            // Free memory immediately by requesting GC
+            System.gc();
+            return ResponseEntity.status(500)
+                    .body("Image is too large and the server ran out of memory. Please try a smaller image.");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500)
+                    .body("Failed to compress image: " + e.getMessage());
+        } catch (Throwable t) {
+            t.printStackTrace();
+            return ResponseEntity.status(500)
+                    .body("Critical error: " + t.toString());
         }
-
-        byte[] compressedBytes = compressToJpeg(originalImage, quality);
-
-        String filename = "compressed_" + file.getOriginalFilename();
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                .contentType(MediaType.IMAGE_JPEG)
-                .body(compressedBytes);
     }
 
     @PostMapping("/api/compress/pdf")
