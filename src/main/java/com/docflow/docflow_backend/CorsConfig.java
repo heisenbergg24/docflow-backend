@@ -18,7 +18,7 @@ public class CorsConfig implements WebMvcConfigurer {
 
  */
 
-package com.docflow.docflow_backend;// ← change to your actual package name
+package com.docflow.docflow_backend;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,12 +33,25 @@ public class CorsConfig {
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.addAllowedOrigin("https://docflow-by-heisenberg.vercel.app");
-        config.addAllowedOrigin("http://localhost:5173"); // for local dev
+        // Use pattern to cover all Vercel deployments (preview + production)
+        // More secure than "*" but covers all *.vercel.app subdomains
+        config.addAllowedOriginPattern("https://*.vercel.app");
+        config.addAllowedOriginPattern("http://localhost:*"); // local dev any port
 
         config.addAllowedHeader("*");
-        config.addAllowedMethod("*");
-        config.setAllowCredentials(true);
+        config.addAllowedMethod("*"); // covers GET, POST, OPTIONS (preflight), etc.
+
+        // Expose headers needed for file download on mobile browsers
+        config.addExposedHeader("Content-Disposition");
+        config.addExposedHeader("Content-Length");
+        config.addExposedHeader("Content-Type");
+
+        // Do NOT set allowCredentials(true) unless you're using cookies/auth
+        // Setting it to false (default) removes strict origin matching requirements
+        config.setAllowCredentials(false);
+
+        // Cache preflight response for 1 hour — reduces OPTIONS round trips on mobile
+        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
